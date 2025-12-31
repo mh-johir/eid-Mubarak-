@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 | The Next Chapter</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --text-primary: #1a1a1a;
+            --text-secondary: #555;
+            --accent: #d4af37; /* Champagne Gold */
+            --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg-gradient);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+        }
+
+        /* Canvas Background */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Texture Overlay for Grainy Film Look (Ultra Modern) */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Main UI Container */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none; /* Allows 3D interaction */
+        }
+
+        .hero-text-wrapper {
+            text-align: center;
+            mix-blend-mode: multiply; /* Blends text with 3D elements behind */
+        }
+
+        /* Editorial Typography */
+        .pre-title {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            opacity: 0; /* Animated later */
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 10vw; /* Responsive huge text */
+            line-height: 0.9;
+            margin: 0;
+            font-weight: 400;
+            color: #111;
+            font-style: italic;
+            overflow: hidden;
+        }
+        
+        h1 span {
+            display: inline-block;
+            transform: translateY(100%); /* Hidden initially */
+        }
+
+        .year-huge {
+            font-family: 'Inter', sans-serif;
+            font-size: 12vw;
+            font-weight: 700;
+            letter-spacing: -5px;
+            color: transparent;
+            -webkit-text-stroke: 2px #111;
+            margin-top: -2vw;
+            display: block;
+            opacity: 0;
+        }
+
+        .wish-message {
+            margin-top: 2rem;
+            font-size: 1.2rem;
+            font-weight: 300;
+            color: var(--text-secondary);
+            max-width: 400px;
+            line-height: 1.6;
+            opacity: 0;
+        }
+
+        /* Modern Button */
+        .cta-btn {
+            pointer-events: auto;
+            margin-top: 3rem;
+            padding: 15px 40px;
+            border: 1px solid #111;
+            background: transparent;
+            color: #111;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            opacity: 0;
+        }
+
+        .cta-btn:hover {
+            background: #111;
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            h1 { font-size: 15vw; }
+            .year-huge { font-size: 20vw; -webkit-text-stroke: 1px #111;}
+            .wish-message { font-size: 1rem; padding: 0 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div class="noise-overlay"></div>
+
+    <div class="ui-container">
+        <div class="hero-text-wrapper">
+            <div class="pre-title">A Fresh Start</div>
+            <h1>
+                <span>Happy</span> <br> <span>New Year</span>
+            </h1>
+            <div class="year-huge">2026</div>
+            <div class="wish-message">
+                Embrace the elegance of new beginnings. <br> Let's make this year extraordinary.
+            </div>
+        
+        </div>
+    </div>
+
+    <script>
+        // --- SCENE SETUP (Modern Light Theme) ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f7); // Soft Apple-like white
+        scene.fog = new THREE.Fog(0xf5f5f7, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0, 20);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        // --- LIGHTING (Studio Lighting Setup) ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfff0dd, 1);
+        dirLight.position.set(5, 10, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0xebeeff, 0.5); // Cool fill light
+        fillLight.position.set(-5, 0, 5);
+        scene.add(fillLight);
+
+        // --- OBJECTS: LUXURY BALLOONS ---
+        const balloonGeometry = new THREE.SphereGeometry(0.8, 32, 32);
+        const balloons = [];
+        const balloonColors = [
+            0xffcfd2, // Pastel Pink
+            0xe3f2fd, // Pastel Blue
+            0xfff9c4, // Pastel Yellow
+            0xffd700, // Gold (Metallic)
+            0xc0c0c0  // Silver
+        ];
+
+        // Create random balloons
+        for (let i = 0; i < 40; i++) {
+            const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+            const isMetallic = Math.random() > 0.6; // 40% chance of being metallic
+
+            const material = new THREE.MeshPhysicalMaterial({
+                color: color,
+                metalness: isMetallic ? 0.6 : 0.1,
+                roughness: isMetallic ? 0.1 : 0.4,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                reflectivity: 1
+            });
+
+            const balloon = new THREE.Mesh(balloonGeometry, material);
+            
+            // Random start positions (spread out)
+            balloon.position.x = (Math.random() - 0.5) * 20;
+            balloon.position.y = (Math.random() - 0.5) * 20 - 10; // Start lower
+            balloon.position.z = (Math.random() - 0.5) * 10 - 5;
+            
+            balloon.castShadow = true;
+            balloon.receiveShadow = true;
+            
+            // Custom properties for animation
+            balloon.userData = {
+                speed: 0.02 + Math.random() * 0.03,
+                wobbleOffset: Math.random() * Math.PI * 2,
+                wobbleSpeed: 0.5 + Math.random() * 0.5
+            };
+
+            scene.add(balloon);
+            balloons.push(balloon);
+        }
+
+        // --- OBJECTS: CONFETTI (Falling Papers) ---
+        const confettiCount = 500;
+        const confettiGeometry = new THREE.PlaneGeometry(0.15, 0.3);
+        const confetti = [];
+
+        for(let i=0; i<confettiCount; i++) {
+            const material = new THREE.MeshBasicMaterial({
+                color: balloonColors[Math.floor(Math.random() * balloonColors.length)],
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(confettiGeometry, material);
+            
+            mesh.position.set(
+                (Math.random() - 0.5) * 25,
+                Math.random() * 20 + 10, // Start high up
+                (Math.random() - 0.5) * 15
+            );
+            
+            mesh.userData = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.05,
+                    -(0.02 + Math.random() * 0.05), // Falling down
+                    (Math.random() - 0.5) * 0.05
+                ),
+                rotationSpeed: new THREE.Vector3(
+                    Math.random() * 0.1,
+                    Math.random() * 0.1,
+                    Math.random() * 0.1
+                )
+            };
+            
+            scene.add(mesh);
+            confetti.push(mesh);
+        }
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+
+            // Animate Balloons (Floating Up & Wobbling)
+            balloons.forEach(b => {
+                b.position.y += b.userData.speed;
+                // Wobble motion
+                b.position.x += Math.sin(time * b.userData.wobbleSpeed + b.userData.wobbleOffset) * 0.01;
+
+                // Reset if goes too high
+                if (b.position.y > 15) {
+                    b.position.y = -15;
+                    b.position.x = (Math.random() - 0.5) * 20;
+                }
+            });
+
+            // Animate Confetti (Falling & Spinning)
+            confetti.forEach(c => {
+                c.position.add(c.userData.velocity);
+                c.rotation.x += c.userData.rotationSpeed.x;
+                c.rotation.y += c.userData.rotationSpeed.y;
+                c.rotation.z += c.userData.rotationSpeed.z;
+
+                // Reset if falls below screen
+                if (c.position.y < -10) {
+                    c.position.y = 15;
+                    c.position.x = (Math.random() - 0.5) * 25;
+                }
+            });
+
+            // Camera subtle interaction
+            camera.position.x += (mouseX * 2 - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY * 2 - camera.position.y) * 0.05;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+
+        // Mouse Interaction
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) - 0.5;
+            mouseY = (e.clientY / window.innerHeight) - 0.5;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+
+        // --- GSAP TEXT ANIMATIONS (The "Modern" Feel) ---
+        const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
+
+        // Sequence
+        tl.to(".pre-title", { opacity: 1, duration: 1, delay: 0.5 })
+          .to("h1 span", { y: "0%", duration: 1.5, stagger: 0.2 }, "-=0.5")
+          .to(".year-huge", { opacity: 0.1, scale: 1, duration: 2, ease: "slow(0.7, 0.7, false)" }, "-=1.5") // Subtle large text background
+          .to(".wish-message", { opacity: 1, y: 0, duration: 1 }, "-=1")
+          .to(".cta-btn", { opacity: 1, y: 0, duration: 1 }, "-=0.8");
+
+        // --- CELEBRATION FUNCTION ---
+        function celebrate() {
+            // Speed up balloons and confetti temporarily
+            balloons.forEach(b => b.userData.speed += 0.1);
+            
+            // Animation for button click
+            gsap.to(".cta-btn", { scale: 0.95, duration: 0.1, yoyo: true, repeat: 1 });
+            
+            // Add a burst of light
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.top = 0;
+            flash.style.left = 0;
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.background = 'white';
+            flash.style.zIndex = 100;
+            flash.style.opacity = 0.8;
+            document.body.appendChild(flash);
+            
+            gsap.to(flash, { opacity: 0, duration: 0.8, onComplete: () => flash.remove() });
+        }
+    </script>
+</body>
+</html>
